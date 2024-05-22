@@ -1,7 +1,9 @@
 #include <iostream>
 #include <cstring>
+#include <string>
 #include <fstream>
 #include <unordered_map>
+#include <list>
 
 using namespace std;
 
@@ -10,6 +12,8 @@ void readfile(string filename);
 unordered_map<char, int[5]> freq;
 unordered_map<char, unordered_map<char, int[5]>> preceeding_letter;
 unordered_map<char, unordered_map<char, int[5]>> succeeding_letter;
+list<string> guesses;
+list<char> alphabet { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z' }
 int main()
 {
 
@@ -34,6 +38,8 @@ int main()
         for (auto &c : guess)
             c = toupper(c);
         cout << "You guessed: " << guess << '\n';
+        guesses.push_back(guess);
+
         int wordindex = 0;
 
         string result[5] = {"Nope", "Nope", "Nope", "Nope", "Nope"};
