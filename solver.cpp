@@ -6,12 +6,17 @@
 #include <list>
 #include <bits/stdc++.h>
 #include <algorithm>
+#include <random>
+#include <vector>
+#include <chrono>
+#include <unordered_set>
 
 using namespace std;
+using namespace std::chrono;
 
 void readfile(string filename);
 void evaluate_words(int guesscount);
-string sort(map<string, double> &M);
+string sort(unordered_map<string, double> &M);
 bool cmp(pair<string, double> &a,
          pair<string, double> &b);
 int gameloop(string secret);
@@ -40,7 +45,7 @@ string results[15][5] = {
     {"Nope", "Nope", "Nope", "Nope", "Nope"},
     {"Nope", "Nope", "Nope", "Nope", "Nope"}};
 list<char> alphabet{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'};
-map<string, double> scores;
+unordered_map<string, double> scores;
 list<string> all_words;
 char gamemode;
 
@@ -66,22 +71,39 @@ int main()
 
     readfile("answers.txt");
 
-    while (gamemode != 'm' && gamemode != 'a')
+    vector<string> v(all_words.cbegin(), all_words.cend());
+    random_device rd;
+    mt19937 generator(rd());
+    shuffle(v.begin(), v.end(), generator);
+    bool invalid_mode = true;
+    int final_score;
+
+    while (invalid_mode)
     {
-        cout << "Choose game mode: manual(m) or automatic(a)" << endl;
+        cout << "Choose game mode: manual(m), automatic(a), or full game(f)" << endl;
         cin >> gamemode;
-        if (gamemode == 'a')
+        switch (gamemode)
         {
+        case 'a':
             cout << "Autosolving all words" << endl;
             autoplay();
-        }
-        else if (gamemode == 'm')
-        {
+            invalid_mode = false;
+            break;
+        case 'm':
             manual_game();
-        }
-        else
-        {
+            invalid_mode = false;
+            break;
+
+        case 'f':
+
+            final_score = gameloop(v[0]);
+            cout << "Congrats, solved " << v[0] << " in " << final_score << " guesses" << endl;
+            invalid_mode = false;
+            break;
+        default:
+
             cout << gamemode << " is not a valid gamemode, try again" << endl;
+            break;
         }
     }
 }
@@ -209,28 +231,34 @@ int gameloop(string secret)
     while (true)
     {
         evaluate_words(guesscount);
-        guess = sort(scores);
         guesscount++;
+        if (gamemode == 'a')
+        {
+            guess = sort(scores);
+        }
+        else if (gamemode == 'f')
+        {
+            sort(scores);
+            guess = " ";
+            while (guess.length() != 5)
+            {
+                cout << "hello worldle! Type guess number " << guesscount << '\n';
+                cin >> guess;
+                if (guess.length() != 5)
+                {
+                    std::cout << "Please type a 5 letter word \n";
+                }
+            }
+        }
+
+        for (auto &c : guess)
+            c = toupper(c);
+
         if (guess == secret)
         {
             break;
         }
 
-        /* for manual input
-        cout << freq['Q'][2];
-        cout << "hello worldle! Type guess number " << guesscount << '\n';
-        cin >> guess;
-        if (guess.length() != 5)
-        {
-            std::cout << "Please type a 5 letter word \n";
-            guesscount--;
-            continue;
-        }
-        */
-
-        for (auto &c : guess)
-            c = toupper(c);
-        // cout << "You guessed: " << guess << '\n';
         guesses[guesscount] = guess;
         unordered_map<char, int> letters;
         for (int i = 0; i < 2; i++)
@@ -277,23 +305,30 @@ int gameloop(string secret)
             }
         }
 
-        /*cout << "Result of: " << guess << '\n';
-
-        for (string i : results[guesscount])
+        if (gamemode != 'a')
         {
-            cout << i << ", ";
+            cout << "Result of: " << guess << '\n';
+
+            for (string i : results[guesscount])
+            {
+                cout << i << ", ";
+            }
+            cout << endl;
         }
+
+        /*
         for (char i : alphabet)
         {
             cout << i << ", ";
         }
-        cout << '\n';*/
+        */
     }
     return guesscount;
 }
 
 void readfile(string filename)
 {
+    auto start = high_resolution_clock::now();
     fstream newfile;
 
     newfile.open(filename, ios::in); // open a file to perform read operation using file object
@@ -330,6 +365,8 @@ void readfile(string filename)
 
 void evaluate_words(int guesscount)
 {
+    auto start = high_resolution_clock::now();
+
     list<string> impossiblewords;
     list<char> illegal_dupes;
     unordered_map<char, string[5]> correct_letters;
@@ -391,6 +428,7 @@ void evaluate_words(int guesscount)
             if (!found)
             {
                 score -= 500000;
+                goto jump;
             }
             for (int r = 0; r <= guesscount; r++)
             {
@@ -402,6 +440,7 @@ void evaluate_words(int guesscount)
                     {
                         correct_letters[c][wordindex] = "incorrect";
                         score -= 500000;
+                        goto jump;
                     }
                 }
             }
@@ -415,6 +454,7 @@ void evaluate_words(int guesscount)
                 else
                 {
                     score -= 50000;
+                    goto jump;
                 }
             }
 
@@ -423,14 +463,15 @@ void evaluate_words(int guesscount)
                 if (results[guesscount][wordindex] == "Nope" && c == guesses[guesscount][wordindex])
                 {
                     score -= 500000;
+                    goto jump;
                 }
             }
-
+            /******** Better solverate with these turned off. Was giving points for common letter combos
             if (wordindex > 0)
             {
                 // score += preceeding_letter[c][prec][wordindex];
                 // score += succeeding_letter[prec][c][wordindex - 1];
-            }
+            } *****/
 
             score += freq.at(c)[wordindex];
             wordindex++;
@@ -438,7 +479,7 @@ void evaluate_words(int guesscount)
             scores[word] = score;
         }
 
-        scores[word] = scores[word] * (letter_count.size());
+        scores[word] = scores[word] * (letter_count.size() * letter_count.size());
         for (auto const &[letter, count] : letter_count)
         {
             if (count > 1 && (find(illegal_dupes.begin(), illegal_dupes.end(), letter) != illegal_dupes.end()))
@@ -446,6 +487,7 @@ void evaluate_words(int guesscount)
                 scores[word] -= 500000;
             }
         }
+    jump:
         if (score < 0 || delete_word == true)
         {
             impossiblewords.push_back(word);
@@ -456,6 +498,12 @@ void evaluate_words(int guesscount)
     {
         scores.erase(delword);
     }
+
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<microseconds>(stop - start);
+
+    cout << "Time taken by function: "
+         << duration.count() << " microseconds" << endl;
 }
 
 bool cmp(pair<string, double> &a,
@@ -466,7 +514,7 @@ bool cmp(pair<string, double> &a,
 
 // Function to sort the map according
 // to value in a (key-value) pairs
-string sort(map<string, double> &M)
+string sort(unordered_map<string, double> &M)
 {
     string best_answer;
     // Declare vector of pairs
@@ -489,7 +537,7 @@ string sort(map<string, double> &M)
         if (printnum == 0)
             best_answer = it.first;
 
-        if (gamemode == 'm')
+        if (gamemode != 'a')
         {
             cout << it.first << ' '
                  << it.second << endl;
