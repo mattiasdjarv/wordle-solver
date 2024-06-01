@@ -14,16 +14,16 @@
 using namespace std;
 using namespace std::chrono;
 
-void readfile(string filename);
+void readfile(string const &filename);
 void evaluate_words(int guesscount);
 string sort(unordered_map<string, double> &M);
 bool cmp(pair<string, double> &a,
          pair<string, double> &b);
-int gameloop(string secret);
-void autoplay();
+int gameloop(string const &secret);
+double autoplay();
 void manual_game();
 
-list<char> must_contain;
+unordered_set<char> must_contain;
 unordered_map<char, double[5]> freq;
 unordered_map<char, unordered_map<char, double[5]>> preceeding_letter;
 unordered_map<char, unordered_map<char, double[5]>> succeeding_letter;
@@ -44,16 +44,19 @@ string results[15][5] = {
     {"Nope", "Nope", "Nope", "Nope", "Nope"},
     {"Nope", "Nope", "Nope", "Nope", "Nope"},
     {"Nope", "Nope", "Nope", "Nope", "Nope"}};
-list<char> alphabet{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'};
+unordered_set<char> alphabet{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'};
 unordered_map<string, double> scores;
 list<string> all_words;
 char gamemode;
+int startindex = 0;
+string startword;
+string startwordactual;
 
 void reset()
 {
     must_contain.clear();
     alphabet = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'};
-    for (string word : all_words)
+    for (string const &word : all_words)
     {
         scores[word] = 0;
     }
@@ -77,16 +80,35 @@ int main()
     shuffle(v.begin(), v.end(), generator);
     bool invalid_mode = true;
     int final_score;
+    double startwordavg;
+    string beststart = " ";
+    double beststartavg = MAXFLOAT;
 
     while (invalid_mode)
     {
         cout << "Choose game mode: manual(m), automatic(a), or full game(f)" << endl;
-        cin >> gamemode;
+        string input;
+        cin >> input;
+        gamemode = input[0];
+        cin.ignore();
         switch (gamemode)
         {
         case 'a':
             cout << "Autosolving all words" << endl;
-            autoplay();
+            for (int i = 0; i < all_words.size(); i++)
+            {
+                startwordavg = autoplay();
+                startindex++;
+                if (startwordavg < beststartavg)
+                {
+                    beststart = startwordactual;
+                    beststartavg = startwordavg;
+                }
+                cout << "Solved with start word " << startwordactual << " with avg " << startwordavg << " guesses" << endl;
+
+                cout << "Best starting word yet: " << beststart << " with an avg of " << beststartavg << endl;
+            }
+
             invalid_mode = false;
             break;
         case 'm':
@@ -108,16 +130,16 @@ int main()
     }
 }
 
-void autoplay()
+double autoplay()
 {
-    double avg_guesses;
     double guesses_to_win = 0;
-    int guessnmr = 0;
+    int guessnmr;
     int maxguesses = 0;
     int currentwordnum = 0;
     int numofwords = all_words.size();
     string maxguessword;
-    for (string secret : all_words)
+
+    for (string const &secret : all_words)
     {
         currentwordnum++;
         reset();
@@ -131,13 +153,17 @@ void autoplay()
         guesses_to_win += guessnmr;
         cout << "Solving word number " << currentwordnum << " out of " << numofwords << "\t\r" << flush;
     }
+    /*
     cout << endl
          << "avg: " << guesses_to_win / numofwords << endl;
     cout << "Hardest word was " << maxguessword << " in " << maxguesses << " guesses" << endl;
+*/
+    return guesses_to_win / numofwords;
 }
 
 void manual_game()
 {
+
     int guesscount = 0;
     string guess;
     string res;
@@ -175,7 +201,6 @@ void manual_game()
                 cout << "Invalid format, please try again" << endl;
             }
         }
-
         for (auto &c : guess)
             c = toupper(c);
         // cout << "You guessed: " << guess << '\n';
@@ -212,7 +237,7 @@ void manual_game()
             bool found = find(correct_letters.begin(), correct_letters.end(), letter) != correct_letters.end();
             if (!found)
             {
-                alphabet.remove(letter);
+                alphabet.erase(letter);
             }
         }
 
@@ -224,7 +249,7 @@ void manual_game()
     }
 }
 
-int gameloop(string secret)
+int gameloop(string const &secret)
 {
     int guesscount = 0;
     string guess;
@@ -235,6 +260,11 @@ int gameloop(string secret)
         if (gamemode == 'a')
         {
             guess = sort(scores);
+            if (guesscount == 1)
+            {
+                guess = startword;
+                startwordactual = startword;
+            }
         }
         else if (gamemode == 'f')
         {
@@ -299,7 +329,7 @@ int gameloop(string secret)
                 if (!correct_letter)
                 {
 
-                    alphabet.remove(guess_c);
+                    alphabet.erase(guess_c);
                 }
                 guessindex++;
             }
@@ -309,7 +339,7 @@ int gameloop(string secret)
         {
             cout << "Result of: " << guess << '\n';
 
-            for (string i : results[guesscount])
+            for (string const &i : results[guesscount])
             {
                 cout << i << ", ";
             }
@@ -326,7 +356,7 @@ int gameloop(string secret)
     return guesscount;
 }
 
-void readfile(string filename)
+void readfile(string const &filename)
 {
     auto start = high_resolution_clock::now();
     fstream newfile;
@@ -365,18 +395,18 @@ void readfile(string filename)
 
 void evaluate_words(int guesscount)
 {
-    auto start = high_resolution_clock::now();
+    // auto start = high_resolution_clock::now();
 
     list<string> impossiblewords;
     list<char> illegal_dupes;
     unordered_map<char, string[5]> correct_letters;
 
     int must_contain_letter_index = 0;
-    for (string s : results[guesscount])
+    for (string const &s : results[guesscount])
     {
         if (s == "yellow" && !(find(must_contain.begin(), must_contain.end(), guesses[guesscount][must_contain_letter_index]) != must_contain.end()))
         {
-            must_contain.push_back(guesses[guesscount][must_contain_letter_index]);
+            must_contain.insert(guesses[guesscount][must_contain_letter_index]);
         }
         must_contain_letter_index++;
     }
@@ -402,10 +432,10 @@ void evaluate_words(int guesscount)
         char prec = ' ';
         bool found;
         bool delete_word = true;
-        list<char> must_contain_copy;
+        unordered_set<char> must_contain_copy;
         for (char must_letter : must_contain)
         {
-            must_contain_copy.push_back(must_letter);
+            must_contain_copy.insert(must_letter);
         }
 
         unordered_map<char, int> letter_count;
@@ -415,7 +445,7 @@ void evaluate_words(int guesscount)
         {
             if ((find(must_contain_copy.begin(), must_contain_copy.end(), c) != must_contain_copy.end()))
             {
-                must_contain_copy.remove(c);
+                must_contain_copy.erase(c);
             }
             if (must_contain_copy.empty())
             {
@@ -498,12 +528,12 @@ void evaluate_words(int guesscount)
     {
         scores.erase(delword);
     }
+    /*
+        auto stop = high_resolution_clock::now();
+        auto duration = duration_cast<microseconds>(stop - start);
 
-    auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<microseconds>(stop - start);
-
-    cout << "Time taken by function: "
-         << duration.count() << " microseconds" << endl;
+        cout << "Time taken by function: "
+             << duration.count() << " microseconds" << endl;*/
 }
 
 bool cmp(pair<string, double> &a,
@@ -522,7 +552,7 @@ string sort(unordered_map<string, double> &M)
 
     // Copy key-value pair from Map
     // to vector of pairs
-    for (auto &it : M)
+    for (auto const &it : M)
     {
         A.push_back(it);
     }
@@ -536,6 +566,11 @@ string sort(unordered_map<string, double> &M)
     {
         if (printnum == 0)
             best_answer = it.first;
+        if (printnum == startindex && gamemode == 'a')
+        {
+            startword = it.first;
+            break;
+        }
 
         if (gamemode != 'a')
         {
@@ -544,7 +579,7 @@ string sort(unordered_map<string, double> &M)
         }
 
         printnum++;
-        if (printnum >= 5)
+        if (printnum >= 5 && gamemode != 'a')
             break;
     }
     return best_answer;
